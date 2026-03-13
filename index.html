@@ -1,61 +1,174 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
-    <title>PoC - Analisador Dinâmico de Clickjacking</title>
+    <title>Analisador de Clickjacking + Evidência</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f4f4f4; color: #333; }
-        .container { margin-top: 30px; }
-        
-        /* Estilização do Input */
-        .controls { margin-bottom: 20px; background: white; padding: 20px; display: inline-block; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        input[type="text"] { padding: 10px; width: 350px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #0056b3; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
 
-        .iframe-container {
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-evidence {
+            background-color: #6c757d;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .status-box {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 5px;
+            display: block;
+        }
+
+        .vulneravel {
+            color: white;
+            background-color: #d9534f;
+        }
+
+        .seguro {
+            color: white;
+            background-color: #5cb85c;
+        }
+
+        .processando {
+            color: #333;
+            background-color: #f0ad4e;
+        }
+
+        .aguardando {
+            color: #666;
+            background-color: #e9e9e9;
+        }
+
+        /* Área do Iframe e Evidência */
+        .canvas-area {
             position: relative;
             width: 900px;
             height: 500px;
             margin: 20px auto;
-            border: 2px solid #ccc;
+            border: 3px dashed #bbb;
             background-color: white;
+            overflow: hidden;
         }
-        iframe { width: 100%; height: 100%; border: none; }
-        #detector-container { width: 0; height: 0; visibility: hidden; overflow: hidden; }
 
-        .status-box {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin: 10px;
-            padding: 12px;
-            border-radius: 5px;
-            display: inline-block;
-            min-width: 400px;
+        /* O Iframe (Site Alvo) */
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            z-index: 2;
+            /* Fica por cima */
+            transition: opacity 0.5s ease;
         }
-        .vulneravel { color: white; background-color: #d9534f; }
-        .seguro { color: white; background-color: #5cb85c; }
-        .processando { color: #333; background-color: #f0ad4e; }
-        .aguardando { color: #666; background-color: #e9e9e9; }
+
+        /* O Botão Malicioso (Evidência) */
+        .fake-ui {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            /* Fica por baixo */
+        }
+
+        .fake-button {
+            padding: 15px 30px;
+            background: #ff0000;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        #detector-container {
+            width: 0;
+            height: 0;
+            visibility: hidden;
+        }
+
+        .label-evidencia {
+            font-weight: bold;
+            color: #d9534f;
+            margin-top: 10px;
+            display: none;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="container">
-        <h1>Analisador de Clickjacking</h1>
+        <h1>PoC: Vulnerabilidade de Clickjacking</h1>
 
         <div class="controls">
-            <input type="text" id="url-input" placeholder="https://exemplo.com.br" value="https://www.google.com">
-            <button onclick="iniciarAnalise()">Analisar Site</button>
+            <input type="text" id="url-input" placeholder="https://exemplo.com" value="https://www.ciamuller.com.br">
+            <button class="btn-primary" onclick="iniciarAnalise()">Analisar Segurança</button>
+            <button id="btn-show-evidence" class="btn-evidence" onclick="toggleEvidencia()" disabled>Mostrar
+                Evidência</button>
         </div>
-        
-        <br>
-        <div id="resultado" class="status-box aguardando">AGUARDANDO URL...</div>
-        
-        <div class="iframe-container">
+
+        <div id="resultado" class="status-box aguardando">DIGITE UMA URL E CLIQUE EM ANALISAR</div>
+        <div id="msg-evidencia" class="label-evidencia">MODO DE EVIDÊNCIA ATIVO: O site alvo está com 30% de opacidade.
+        </div>
+
+        <div class="canvas-area">
+            <div class="fake-ui">
+                <button class="fake-button"
+                    onclick="alert('Botão invisível clicado! Se este fosse o site alvo, o usuário teria realizado uma ação sem saber.')">
+                    CLIQUE AQUI PARA GANHAR 1 BTC grátis!
+                </button>
+            </div>
+
             <iframe id="target-frame" src="about:blank"></iframe>
         </div>
-        
+
         <div id="detector-container"></div>
     </div>
 
@@ -63,57 +176,75 @@
         const statusDiv = document.getElementById('resultado');
         const frame = document.getElementById('target-frame');
         const detectorContainer = document.getElementById('detector-container');
+        const btnEvidence = document.getElementById('btn-show-evidence');
+        const msgEvidencia = document.getElementById('msg-evidencia');
+        let mostrandoEvidencia = false;
         let timer;
 
         function iniciarAnalise() {
             let url = document.getElementById('url-input').value.trim();
-            
-            // Validação básica de protocolo
-            if (!url.startsWith('http')) {
-                url = 'https://' + url;
-            }
+            if (!url.startsWith('http')) url = 'https://' + url;
 
-            // Reset de interface
-            statusDiv.innerText = "ANALISANDO RESPOSTA (4s)...";
+            statusDiv.innerText = "TESTANDO CABEÇALHOS DE SEGURANÇA...";
             statusDiv.className = "status-box processando";
-            clearTimeout(timer);
+            btnEvidence.disabled = true;
+            resetEvidencia();
 
-            // 1. Atualiza o Iframe (Visual)
             frame.src = url;
-
-            // 2. Atualiza o Object (Técnico)
-            // Recriamos o elemento object para forçar o navegador a disparar uma nova requisição
             detectorContainer.innerHTML = `
-                <object id="detector" data="${url}" type="text/html">
-                    <div id="fallback-marker" style="height:10px; width:10px;"></div>
-                </object>
-            `;
+            <object id="detector" data="${url}" type="text/html">
+                <div id="fallback-marker" style="height:10px; width:10px;"></div>
+            </object>
+        `;
 
-            // 3. Agenda a verificação
             timer = setTimeout(realizarCheck, 4000);
         }
 
         function realizarCheck() {
             const marker = document.getElementById('fallback-marker');
-            
-            // Se o marker tiver altura, o browser bloqueou o conteúdo do object (X-Frame-Options ou CSP)
+
             if (marker && marker.offsetHeight > 0) {
-                statusDiv.innerText = "SITE NÃO VULNERÁVEL (BLOQUEIO ATIVO)";
+                statusDiv.innerText = "SITE SEGURO: Bloqueio de X-Frame-Options/CSP detectado.";
                 statusDiv.className = "status-box seguro";
+                btnEvidence.disabled = true;
             } else {
-                statusDiv.innerText = "SITE VULNERÁVEL";
+                statusDiv.innerText = "SITE VULNERÁVEL: O conteúdo foi carregado com sucesso!";
                 statusDiv.className = "status-box vulneravel";
+                btnEvidence.disabled = false; // Habilita o botão de evidência
             }
         }
 
-        // Listener de interação manual (caso o usuário clique dentro do iframe)
-        window.onblur = function() {
+        function toggleEvidencia() {
+            mostrandoEvidencia = !mostrandoEvidencia;
+            if (mostrandoEvidencia) {
+                frame.style.opacity = "0.3"; // Torna o site quase invisível
+                msgEvidencia.style.display = "block";
+                btnEvidence.innerText = "Esconder Evidência";
+            } else {
+                resetEvidencia();
+            }
+        }
+
+        function resetEvidencia() {
+            mostrandoEvidencia = false;
+            frame.style.opacity = "1";
+            msgEvidencia.style.display = "none";
+            btnEvidence.innerText = "Mostrar Evidência";
+        }
+
+        // Monitora se o usuário interagir com o iframe (mesmo invisível)
+        window.onblur = function () {
             if (document.activeElement === frame) {
-                statusDiv.innerText = "VULNERÁVEL (INTERAÇÃO DETECTADA)";
+                statusDiv.innerText = "VULNERABILIDADE CONFIRMADA (CLIQUE CAPTURADO!)";
                 statusDiv.className = "status-box vulneravel";
             }
         };
     </script>
 
+    <footer>
+        <p>© 2026 Made with 🤍 by ThazSobral.</p>
+        <p>Todos os direitos reservados.</p>
+    </footer>
 </body>
+
 </html>
